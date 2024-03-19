@@ -14,9 +14,9 @@ const Filters = () => {
 
   return (
     <div style={{ display: "flex", paddingBottom: "10px", gap: "5px" }}>
-      <button className="button" onClick={() => resetView("")}>Todos</button>
-      <button className="button" onClick={() => resetView("oldTestament")}>Antiguo Testamento</button>
-      <button className="button" onClick={() => resetView("newTestament")}>Nuevo Testamento</button>
+      <button onClick={() => resetView("")}>Todos</button>
+      <button onClick={() => resetView("oldTestament")}>Antiguo Testamento</button>
+      <button onClick={() => resetView("newTestament")}>Nuevo Testamento</button>
     </div>
   );
 };
