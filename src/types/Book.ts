@@ -10,6 +10,7 @@ export interface BibleVersion {
   title: string;
   label: string;
   language_tag: string;
+  search: string;
 }
 
 export interface Book {

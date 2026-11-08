@@ -9,7 +9,7 @@ const FIXED_LANGUAGES = [
 
 const VersionSelector = () => {
 
-  const { languages, selectedLanguages, toggleLanguage, family, setFamily, unresolved } =
+  const { languages, selectedLanguages, toggleLanguage, family, setFamily, unresolved, versions } =
     useContext(BookContext);
   const [query, setQuery] = useState("");
 
@@ -81,7 +81,23 @@ const VersionSelector = () => {
       )}
 
       {unresolved.length > 0 && (
-        <small>Sin {FAMILY_LABELS[family]} disponible en: {unresolved.map(labelOf).join(", ")}</small>
+        <>
+          <small>Sin {FAMILY_LABELS[family]} disponible en: {unresolved.map(labelOf).join(", ")}</small>
+          <details>
+            <summary><small>Ver versiones disponibles</small></summary>
+            {selectedLanguages.map((lang) => {
+              const list = versions.filter((v) => v.language_tag === lang);
+              return (
+                <div key={lang}>
+                  <small><b>{labelOf(lang)}</b> ({list.length})</small>
+                  <div style={{ maxHeight: "150px", overflowY: "auto" }}>
+                    {list.map((v) => <div key={v.id}><small>{v.search}</small></div>)}
+                  </div>
+                </div>
+              );
+            })}
+          </details>
+        </>
       )}
     </div>
   );

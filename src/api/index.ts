@@ -8,8 +8,11 @@ const client = axios.create({
 });
 
 interface Page<T> {
-  data: T[];
+  data?: T[];
+  items?: T[];
   next_page_token?: string | null;
+  nextPageToken?: string | null;
+  next_page?: string | null;
 }
 
 const MAX_PAGES = 50;
@@ -19,9 +22,10 @@ const getAll = async <T>(path: string, params: Record<string, unknown> = {}): Pr
   let pageToken: string | undefined;
   for (let page = 0; page < MAX_PAGES; page++) {
     const { data } = await client.get<Page<T>>(path, { params: { ...params, page_token: pageToken } });
-    items.push(...(data.data ?? []));
-    if (!data.next_page_token) break;
-    pageToken = data.next_page_token;
+    items.push(...(data.data ?? data.items ?? []));
+    const next = data.next_page_token ?? data.nextPageToken ?? data.next_page;
+    if (!next || next === pageToken) break;
+    pageToken = next;
   }
   return items;
 };
@@ -53,15 +57,27 @@ export const getLanguages = async (): Promise<Language[]> => {
     .sort((a, b) => a.label.localeCompare(b.label));
 };
 
-export const getVersions = async (languageTags: string[]): Promise<BibleVersion[]> => {
-  if (languageTags.length === 0) return [];
-  const raw = await getAll<RawVersion>("/v1/bibles", { language_ranges: languageTags });
+const getVersionsOfLanguage = async (lang: string): Promise<BibleVersion[]> => {
+  const params = { language_ranges: [lang] };
+  let raw: RawVersion[];
+  try {
+    raw = await getAll<RawVersion>("/v1/bibles", { ...params, page_size: 100 });
+  } catch {
+    raw = await getAll<RawVersion>("/v1/bibles", params);
+  }
+  if (raw[0]) console.debug(`[YouVersion] ${lang}: ${raw.length} versiones; ejemplo:`, raw[0]);
   return raw.map((v) => ({
     id: v.id,
     title: v.title,
     label: v.localized_abbreviation ?? v.abbreviation ?? v.title,
-    language_tag: v.language_tag,
+    language_tag: lang,
+    search: [v.title, v.abbreviation, v.localized_abbreviation].filter(Boolean).join(" | "),
   }));
+};
+
+export const getVersions = async (languageTags: string[]): Promise<BibleVersion[]> => {
+  const lists = await Promise.all(languageTags.map((lang) => getVersionsOfLanguage(lang).catch(() => [])));
+  return lists.flat();
 };
 
 const countChapters = (chapters: RawBook["chapters"]): number => {

@@ -15,6 +15,7 @@ interface BookContextProps {
   toggleLanguage: (tag: string) => void;
   family: Family;
   setFamily: (family: Family) => void;
+  versions: BibleVersion[];
   selectedVersions: BibleVersion[];
   unresolved: string[];
 }
@@ -27,6 +28,7 @@ const initialState: BookContextProps = {
   toggleLanguage: () => undefined,
   family: "rvr60",
   setFamily: () => undefined,
+  versions: [],
   selectedVersions: [],
   unresolved: [],
 };
@@ -37,27 +39,22 @@ const DEFAULT_LANGUAGES = ["es", "en"];
 
 const FAMILY_PATTERNS: Record<Family, Record<string, RegExp[]>> = {
   rvr60: {
-    es: [/rvr\s?(19)?60|reina.?valera.*1960/i],
-    en: [/^kjv$/i, /king james/i],
+    es: [/reina[\s-]?valera[^|]*1960|rvr\s?-?(19)?60/i],
+    en: [/\bkjv\b/i, /king james/i],
   },
   nvi: {
-    es: [/^nvi$/i, /nueva versi[oó]n internacional/i],
-    en: [/^niv$/i, /new international version/i],
+    es: [/\bnvi\b/i, /nueva versi[oó]n internacional/i],
+    en: [/\bniv\b/i, /new international version/i],
   },
-};
-
-const inLanguage = (v: BibleVersion, lang: string) => {
-  const tag = v.language_tag.toLowerCase();
-  return tag === lang || tag.startsWith(`${lang}-`);
 };
 
 const pickVersion = (lang: string, family: Family, versions: BibleVersion[]): BibleVersion | undefined => {
-  const candidates = versions.filter((v) => inLanguage(v, lang));
+  const candidates = versions.filter((v) => v.language_tag === lang);
   const patterns = FAMILY_PATTERNS[family][lang];
   if (!patterns) return candidates[0];
   for (const re of patterns) {
-    const match = candidates.find((v) => re.test(v.label) || re.test(v.title));
-    if (match) return match;
+    const matches = candidates.filter((v) => re.test(v.search));
+    if (matches.length > 0) return matches.sort((a, b) => a.search.length - b.search.length)[0];
   }
   return undefined;
 };
@@ -109,6 +106,7 @@ export const BookProvider = ({ children }: BookProviderProps) => {
         toggleLanguage,
         family,
         setFamily,
+        versions,
         selectedVersions,
         unresolved,
       }}
