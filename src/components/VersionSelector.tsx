@@ -1,11 +1,16 @@
 import { useContext, useState } from "react";
 import { BookContext } from "@/context/BooksContext";
+import { FAMILY_LABELS, Family } from "@/types/Book";
+
+const FIXED_LANGUAGES = [
+  { id: "es", label: "ES" },
+  { id: "en", label: "EN" },
+];
 
 const VersionSelector = () => {
 
-  const { languages, selectedLanguages, toggleLanguage, versions, selectedVersionIds, toggleVersion } =
+  const { languages, selectedLanguages, toggleLanguage, family, setFamily, unresolved } =
     useContext(BookContext);
-
   const [query, setQuery] = useState("");
 
   const labelOf = (tag: string) => languages.find((l) => l.id === tag)?.label ?? tag;
@@ -18,17 +23,46 @@ const VersionSelector = () => {
         .slice(0, 50)
     : [];
 
+  const extra = selectedLanguages.filter((tag) => !FIXED_LANGUAGES.some((f) => f.id === tag));
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingBottom: "10px" }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-        {selectedLanguages.map((tag) => (
-          <button key={tag} onClick={() => toggleLanguage(tag)}>{labelOf(tag)} ✕</button>
+      <div style={{ display: "flex", gap: "5px" }}>
+        {(Object.keys(FAMILY_LABELS) as Family[]).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFamily(f)}
+            style={{ fontWeight: family === f ? "bold" : "normal", textDecoration: family === f ? "underline" : "none" }}
+          >
+            {FAMILY_LABELS[f]}
+          </button>
         ))}
       </div>
 
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+        {FIXED_LANGUAGES.map((l) => (
+          <label key={l.id}>
+            <input
+              type="checkbox"
+              checked={selectedLanguages.includes(l.id)}
+              onChange={() => toggleLanguage(l.id)}
+            />
+            {" "}{l.label}
+          </label>
+        ))}
+      </div>
+
+      {extra.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+          {extra.map((tag) => (
+            <button key={tag} onClick={() => toggleLanguage(tag)}>{labelOf(tag)} ✕</button>
+          ))}
+        </div>
+      )}
+
       <input
         type="search"
-        placeholder="Buscar idioma…"
+        placeholder="Buscar otro idioma…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -46,18 +80,9 @@ const VersionSelector = () => {
         </div>
       )}
 
-      <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-        {versions.map((v) => (
-          <label key={v.id} style={{ display: "block" }}>
-            <input
-              type="checkbox"
-              checked={selectedVersionIds.includes(v.id)}
-              onChange={() => toggleVersion(v.id)}
-            />
-            {" "}{v.label} <small>({v.language_tag})</small>
-          </label>
-        ))}
-      </div>
+      {unresolved.length > 0 && (
+        <small>Sin {FAMILY_LABELS[family]} disponible en: {unresolved.map(labelOf).join(", ")}</small>
+      )}
     </div>
   );
 };

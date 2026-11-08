@@ -22,3 +22,7 @@ export interface Verse {
   number: number;
   text: string;
 }
+
+export type Family = "rvr60" | "nvi";
+
+export const FAMILY_LABELS: Record<Family, string> = { rvr60: "RVR60", nvi: "NVI" };

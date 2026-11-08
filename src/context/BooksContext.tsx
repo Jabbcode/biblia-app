@@ -1,5 +1,5 @@
-import { createContext, useEffect, useState } from "react";
-import { BibleVersion, Book, Canon, Language } from "@/types/Book";
+import { createContext, useEffect, useMemo, useState } from "react";
+import { BibleVersion, Book, Canon, Family, Language } from "@/types/Book";
 import { getBooks, getLanguages, getVersions } from "@/api";
 
 interface BookProviderProps {
@@ -13,9 +13,10 @@ interface BookContextProps {
   languages: Language[];
   selectedLanguages: string[];
   toggleLanguage: (tag: string) => void;
-  versions: BibleVersion[];
-  selectedVersionIds: number[];
-  toggleVersion: (id: number) => void;
+  family: Family;
+  setFamily: (family: Family) => void;
+  selectedVersions: BibleVersion[];
+  unresolved: string[];
 }
 
 const initialState: BookContextProps = {
@@ -24,33 +25,48 @@ const initialState: BookContextProps = {
   languages: [],
   selectedLanguages: [],
   toggleLanguage: () => undefined,
-  versions: [],
-  selectedVersionIds: [],
-  toggleVersion: () => undefined,
+  family: "rvr60",
+  setFamily: () => undefined,
+  selectedVersions: [],
+  unresolved: [],
 };
 
 export const BookContext = createContext(initialState);
 
 const DEFAULT_LANGUAGES = ["es", "en"];
-const DEFAULT_VERSION_PATTERNS = [/rvr\s?(19)?60|reina.?valera.*1960/i, /\bNVI\b|nueva versi[oó]n internacional/i];
 
-const pickDefaultVersions = (versions: BibleVersion[]): number[] => {
-  const spanish = versions.filter((v) => v.language_tag.startsWith("es"));
-  const picked = DEFAULT_VERSION_PATTERNS.map((re) =>
-    spanish.find((v) => re.test(v.label) || re.test(v.title))
-  ).filter((v): v is BibleVersion => Boolean(v));
-  const ids = picked.map((v) => v.id);
-  return ids.length > 0 ? ids : versions.slice(0, 2).map((v) => v.id);
+const FAMILY_PATTERNS: Record<Family, Record<string, RegExp[]>> = {
+  rvr60: {
+    es: [/rvr\s?(19)?60|reina.?valera.*1960/i],
+    en: [/^kjv$/i, /king james/i],
+  },
+  nvi: {
+    es: [/^nvi$/i, /nueva versi[oó]n internacional/i],
+    en: [/^niv$/i, /new international version/i],
+  },
 };
 
-const toggle = <T,>(list: T[], item: T) =>
-  list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
+const inLanguage = (v: BibleVersion, lang: string) => {
+  const tag = v.language_tag.toLowerCase();
+  return tag === lang || tag.startsWith(`${lang}-`);
+};
+
+const pickVersion = (lang: string, family: Family, versions: BibleVersion[]): BibleVersion | undefined => {
+  const candidates = versions.filter((v) => inLanguage(v, lang));
+  const patterns = FAMILY_PATTERNS[family][lang];
+  if (!patterns) return candidates[0];
+  for (const re of patterns) {
+    const match = candidates.find((v) => re.test(v.label) || re.test(v.title));
+    if (match) return match;
+  }
+  return undefined;
+};
 
 export const BookProvider = ({ children }: BookProviderProps) => {
   const [languages, setLanguages] = useState<Language[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(DEFAULT_LANGUAGES);
+  const [family, setFamily] = useState<Family>("rvr60");
   const [versions, setVersions] = useState<BibleVersion[]>([]);
-  const [selectedVersionIds, setSelectedVersionIds] = useState<number[]>([]);
   const [books, setBooks] = useState<Book[]>([]);
   const [canon, setCanon] = useState<Canon | undefined>(undefined);
 
@@ -59,23 +75,28 @@ export const BookProvider = ({ children }: BookProviderProps) => {
   }, []);
 
   useEffect(() => {
-    getVersions(selectedLanguages)
-      .then((list) => {
-        setVersions(list);
-        setSelectedVersionIds((current) => {
-          const valid = current.filter((id) => list.some((v) => v.id === id));
-          return valid.length > 0 ? valid : pickDefaultVersions(list);
-        });
-      })
-      .catch(console.error);
+    getVersions(selectedLanguages).then(setVersions).catch(console.error);
   }, [selectedLanguages]);
 
-  const mainVersionId = selectedVersionIds[0];
+  const resolved = useMemo(
+    () => selectedLanguages.map((lang) => ({ lang, version: pickVersion(lang, family, versions) })),
+    [selectedLanguages, family, versions]
+  );
+  const selectedVersions = useMemo(
+    () => resolved.flatMap((r) => (r.version ? [r.version] : [])),
+    [resolved]
+  );
+  const unresolved = versions.length === 0 ? [] : resolved.filter((r) => !r.version).map((r) => r.lang);
+
+  const mainVersionId = selectedVersions[0]?.id;
 
   useEffect(() => {
     if (!mainVersionId) return;
     getBooks(mainVersionId, canon).then(setBooks).catch(console.error);
   }, [mainVersionId, canon]);
+
+  const toggleLanguage = (tag: string) =>
+    setSelectedLanguages((list) => (list.includes(tag) ? list.filter((t) => t !== tag) : [...list, tag]));
 
   return (
     <BookContext.Provider
@@ -85,10 +106,11 @@ export const BookProvider = ({ children }: BookProviderProps) => {
         setCanon,
         languages,
         selectedLanguages,
-        toggleLanguage: (tag) => setSelectedLanguages((l) => toggle(l, tag)),
-        versions,
-        selectedVersionIds,
-        toggleVersion: (id) => setSelectedVersionIds((v) => toggle(v, id)),
+        toggleLanguage,
+        family,
+        setFamily,
+        selectedVersions,
+        unresolved,
       }}
     >
       {children}
