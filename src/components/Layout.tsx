@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 
 import Filters from "@/components/Filters";
 import Sidebar from "@/components/Sidebar";
+import VersionSelector from "@/components/VersionSelector";
 
 const Layout = () => {
 
@@ -13,6 +14,7 @@ const Layout = () => {
     }}
     >
       <div>
+        <VersionSelector />
         <Filters />
         <Sidebar />
       </div>

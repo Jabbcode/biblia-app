@@ -1,32 +1,24 @@
-export interface ResponseBook {
-  names: string[];
-  abrev: string;
-  chapters: number;
-  testament: string;
+export type Canon = "old_testament" | "new_testament";
+
+export interface Language {
+  id: string;
+  label: string;
+}
+
+export interface BibleVersion {
+  id: number;
+  title: string;
+  label: string;
+  language_tag: string;
 }
 
 export interface Book {
-  names: string[];
-  abrev: string;
+  id: string;
+  title: string;
   chapters: number;
-  testament: string;
 }
 
 export interface Verse {
-  verse: string;
   number: number;
-  study?: string;
-  id: number;
+  text: string;
 }
-
-export interface Chapter {
-  testament: string;
-  name: string;
-  num_chapters: number;
-  chapter: number;
-  vers: Verse[];
-}
-
-export type BookState = {
-  books: Book[];
-};

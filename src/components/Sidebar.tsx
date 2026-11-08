@@ -2,17 +2,11 @@ import { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { BookContext } from "@/context/BooksContext";
-import { Book } from "@/types/Book";
 
 const Sidebar = () => {
 
   const navigate = useNavigate()
-  const { books, getChapters } = useContext(BookContext);
-
-  const handleChapters = (book: Book) => {
-    getChapters(book)
-    navigate(`/chapters/${book.names[0]}`)
-  }
+  const { books } = useContext(BookContext);
 
   return (
     <div style={{
@@ -22,13 +16,13 @@ const Sidebar = () => {
     }}
     >
       {
-        books.map((book: Book, index: number) => (
-          <div key={index}>
+        books.map((book) => (
+          <div key={book.id}>
             <button
               className="button"
-              onClick={() => handleChapters(book)}
+              onClick={() => navigate(`/chapters/${book.id}`)}
             >
-              {book.names[0]}
+              {book.title}
             </button>
           </div>
         ))}
